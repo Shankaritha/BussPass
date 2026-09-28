@@ -1,8 +1,12 @@
 package com.example.buspass.controller;
 
+import com.example.buspass.dto.PassApplicationRequest;
 import com.example.buspass.entity.PassApplication;
 import com.example.buspass.service.PassApplicationService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -14,27 +18,27 @@ public class PassApplicationController {
 
     private final PassApplicationService applicationService;
 
-    // Create application
     @PostMapping
-    public PassApplication createApplication(
-            @RequestParam Long studentId,
-            @RequestParam Long routeId,
-            @RequestParam(required = false) String photoReference) {
+    public ResponseEntity<PassApplication> createApplication(
+            @Valid @RequestBody PassApplicationRequest request) {
 
-        return applicationService.createApplication(
-                studentId,
-                routeId,
-                photoReference
-        );
+        PassApplication application =
+                applicationService.createApplication(
+                        request.getStudentId(),
+                        request.getRouteId(),
+                        request.getPhotoReference()
+                );
+
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(application);
     }
 
-    // Get all applications
     @GetMapping
     public List<PassApplication> getAllApplications() {
         return applicationService.getAllApplications();
     }
 
-    // Get application by ID
     @GetMapping("/{id}")
     public PassApplication getApplication(
             @PathVariable Long id) {
@@ -42,7 +46,6 @@ public class PassApplicationController {
         return applicationService.getApplicationById(id);
     }
 
-    // Get applications of a student
     @GetMapping("/student/{studentId}")
     public List<PassApplication> getStudentApplications(
             @PathVariable Long studentId) {
@@ -51,7 +54,6 @@ public class PassApplicationController {
                 .getApplicationsByStudent(studentId);
     }
 
-    // Approve
     @PutMapping("/{id}/approve")
     public PassApplication approveApplication(
             @PathVariable Long id) {
@@ -59,7 +61,6 @@ public class PassApplicationController {
         return applicationService.approveApplication(id);
     }
 
-    // Reject
     @PutMapping("/{id}/reject")
     public PassApplication rejectApplication(
             @PathVariable Long id,
@@ -71,9 +72,18 @@ public class PassApplicationController {
         );
     }
 
-    // Expiring passes
     @GetMapping("/expiring")
     public List<PassApplication> getExpiringApplications() {
         return applicationService.getExpiringApplications();
+    }
+
+    @PutMapping("/update-expired")
+    public ResponseEntity<String> updateExpiredApplications() {
+
+        applicationService.updateExpiredApplications();
+
+        return ResponseEntity.ok(
+                "Expired applications updated successfully"
+        );
     }
 }

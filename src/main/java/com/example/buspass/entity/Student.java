@@ -16,7 +16,13 @@ public class Student {
     private Long id;
 
     private String name;
+
     private String email;
+
     private String phone;
+
     private String collegeName;
+
+    // Stores the uploaded image filename/path
+    private String photoReference;
 }

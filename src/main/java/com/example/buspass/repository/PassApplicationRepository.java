@@ -19,4 +19,9 @@ public interface PassApplicationRepository
             LocalDate start,
             LocalDate end
     );
+
+    List<PassApplication> findByStatusAndValidUntilBefore(
+            PassStatus status,
+            LocalDate date
+    );
 }

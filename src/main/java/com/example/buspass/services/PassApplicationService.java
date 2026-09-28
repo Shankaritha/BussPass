@@ -167,4 +167,20 @@ public class PassApplicationService {
                 next30Days
         );
     }
+    public void updateExpiredApplications() {
+
+        LocalDate today = LocalDate.now();
+
+        List<PassApplication> expiredApplications =
+                applicationRepository.findByStatusAndValidUntilBefore(
+                        PassStatus.APPROVED,
+                        today
+                );
+
+        for (PassApplication application : expiredApplications) {
+            application.setStatus(PassStatus.EXPIRED);
+        }
+
+        applicationRepository.saveAll(expiredApplications);
+    }
 }
