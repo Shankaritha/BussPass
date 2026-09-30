@@ -22,21 +22,27 @@ public class PassApplicationService {
     private final StudentRepository studentRepository;
     private final BusRouteRepository busRouteRepository;
 
-    // Create a new pass application
+
+    // =========================================================
+    // CREATE NEW PASS APPLICATION
+    // =========================================================
+
     public PassApplication createApplication(
             Long studentId,
             Long routeId,
             String photoReference) {
 
+        // Find student
         Student student = studentRepository.findById(studentId)
                 .orElseThrow(() ->
                         new RuntimeException("Student not found"));
 
+        // Find bus route
         BusRoute route = busRouteRepository.findById(routeId)
                 .orElseThrow(() ->
                         new RuntimeException("Bus route not found"));
 
-        // Check whether student already has an approved pass
+        // Check whether student already has an active/approved pass
         boolean alreadyHasPass =
                 applicationRepository.existsByStudentIdAndStatus(
                         studentId,
@@ -49,6 +55,7 @@ public class PassApplicationService {
             );
         }
 
+        // Create application
         PassApplication application = new PassApplication();
 
         application.setApplicationDate(LocalDate.now());
@@ -60,39 +67,74 @@ public class PassApplicationService {
         return applicationRepository.save(application);
     }
 
-    // Get all applications
+
+    // =========================================================
+    // GET ALL APPLICATIONS
+    // =========================================================
+
     public List<PassApplication> getAllApplications() {
+
         return applicationRepository.findAll();
     }
 
-    // Get application by ID
+
+    // =========================================================
+    // GET APPLICATION BY ID
+    // =========================================================
+
     public PassApplication getApplicationById(Long id) {
+
         return applicationRepository.findById(id)
                 .orElseThrow(() ->
-                        new RuntimeException("Application not found"));
+                        new RuntimeException(
+                                "Application not found"
+                        )
+                );
     }
 
-    // Get applications of a particular student
-    public List<PassApplication> getApplicationsByStudent(Long studentId) {
-        return applicationRepository.findAll()
-                .stream()
-                .filter(application ->
-                        application.getStudent().getId().equals(studentId))
-                .toList();
+
+    // =========================================================
+    // GET APPLICATIONS OF A PARTICULAR STUDENT
+    // =========================================================
+
+    public List<PassApplication> getApplicationsByStudent(
+            Long studentId) {
+
+        // Check whether student exists
+        if (!studentRepository.existsById(studentId)) {
+            throw new RuntimeException(
+                    "Student not found"
+            );
+        }
+
+        return applicationRepository.findByStudentId(studentId);
     }
 
-    // Approve application
+
+    // =========================================================
+    // APPROVE APPLICATION
+    // =========================================================
+
     public PassApplication approveApplication(Long id) {
 
-        PassApplication application = getApplicationById(id);
+        // Find application
+        PassApplication application =
+                applicationRepository.findById(id)
+                        .orElseThrow(() ->
+                                new RuntimeException(
+                                        "Application not found"
+                                )
+                        );
 
+        // Only PENDING applications can be approved
         if (application.getStatus() != PassStatus.PENDING) {
+
             throw new RuntimeException(
                     "Only pending applications can be approved"
             );
         }
 
-        // Double-check active pass
+        // Check whether student already has an approved pass
         boolean alreadyHasPass =
                 applicationRepository.existsByStudentIdAndStatus(
                         application.getStudent().getId(),
@@ -100,46 +142,70 @@ public class PassApplicationService {
                 );
 
         if (alreadyHasPass) {
+
             throw new RuntimeException(
                     "Student already has an approved pass"
             );
         }
 
+        // Change status to APPROVED
         application.setStatus(PassStatus.APPROVED);
 
-        application.setPassNumber(
-                "BP-" + UUID.randomUUID()
-                        .toString()
-                        .substring(0, 8)
-                        .toUpperCase()
-        );
+        // Generate unique pass number
+        String passNumber =
+                "BP-" +
+                        UUID.randomUUID()
+                                .toString()
+                                .substring(0, 8)
+                                .toUpperCase();
 
-        application.setValidFrom(LocalDate.now());
+        application.setPassNumber(passNumber);
+
+        // Set pass validity
+        LocalDate today = LocalDate.now();
+
+        application.setValidFrom(today);
 
         application.setValidUntil(
-                LocalDate.now().plusMonths(6)
+                today.plusMonths(6)
         );
 
+        // Add admin remark
         application.setAdminRemark(
                 "Application approved"
         );
 
+        // Save updated application
         return applicationRepository.save(application);
     }
 
-    // Reject application
+
+    // =========================================================
+    // REJECT APPLICATION
+    // =========================================================
+
     public PassApplication rejectApplication(
             Long id,
             String rejectionReason) {
 
-        PassApplication application = getApplicationById(id);
+        // Find application
+        PassApplication application =
+                applicationRepository.findById(id)
+                        .orElseThrow(() ->
+                                new RuntimeException(
+                                        "Application not found"
+                                )
+                        );
 
+        // Only PENDING applications can be rejected
         if (application.getStatus() != PassStatus.PENDING) {
+
             throw new RuntimeException(
                     "Only pending applications can be rejected"
             );
         }
 
+        // Rejection reason is mandatory
         if (rejectionReason == null ||
                 rejectionReason.trim().isEmpty()) {
 
@@ -148,39 +214,70 @@ public class PassApplicationService {
             );
         }
 
+        // Change status to REJECTED
         application.setStatus(PassStatus.REJECTED);
-        application.setRejectionReason(rejectionReason);
-        application.setAdminRemark("Application rejected");
 
+        // Store rejection reason
+        application.setRejectionReason(
+                rejectionReason.trim()
+        );
+
+        // Store admin remark
+        application.setAdminRemark(
+                "Application rejected"
+        );
+
+        // Save changes
         return applicationRepository.save(application);
     }
 
-    // Find passes expiring within a date range
+
+    // =========================================================
+    // GET PASSES EXPIRING WITHIN NEXT 30 DAYS
+    // =========================================================
+
     public List<PassApplication> getExpiringApplications() {
 
         LocalDate today = LocalDate.now();
 
-        LocalDate next30Days = today.plusDays(30);
+        LocalDate next30Days =
+                today.plusDays(30);
 
         return applicationRepository.findByValidUntilBetween(
                 today,
                 next30Days
         );
     }
+
+
+    // =========================================================
+    // UPDATE EXPIRED APPLICATIONS
+    // =========================================================
+
     public void updateExpiredApplications() {
 
         LocalDate today = LocalDate.now();
 
+        // Find approved passes whose validity has ended
         List<PassApplication> expiredApplications =
-                applicationRepository.findByStatusAndValidUntilBefore(
-                        PassStatus.APPROVED,
-                        today
-                );
+                applicationRepository
+                        .findByStatusAndValidUntilBefore(
+                                PassStatus.APPROVED,
+                                today
+                        );
 
-        for (PassApplication application : expiredApplications) {
-            application.setStatus(PassStatus.EXPIRED);
+        // Change their status to EXPIRED
+        for (PassApplication application :
+                expiredApplications) {
+
+            application.setStatus(
+                    PassStatus.EXPIRED
+            );
         }
 
-        applicationRepository.saveAll(expiredApplications);
+        // Save all updated applications
+        applicationRepository.saveAll(
+                expiredApplications
+        );
     }
 }

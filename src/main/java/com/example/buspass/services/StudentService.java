@@ -1,6 +1,8 @@
 package com.example.buspass.service;
 
+import com.example.buspass.entity.PassStatus;
 import com.example.buspass.entity.Student;
+import com.example.buspass.repository.PassApplicationRepository;
 import com.example.buspass.repository.StudentRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -17,6 +19,8 @@ public class StudentService {
 
     private final StudentRepository studentRepository;
 
+    private final PassApplicationRepository applicationRepository;
+
     private final Path uploadDirectory =
             Paths.get("uploads/students");
 
@@ -24,14 +28,63 @@ public class StudentService {
             Student student,
             MultipartFile photo) {
 
+        // ==========================================
+        // 1. FIND ALL STUDENTS WITH SAME NAME + EMAIL
+        // ==========================================
+
+        List<Student> existingStudents =
+                studentRepository
+                        .findAllByNameIgnoreCaseAndEmailIgnoreCase(
+                                student.getName().trim(),
+                                student.getEmail().trim()
+                        );
+
+        // ==========================================
+        // 2. CHECK WHETHER ANY OF THEM HAS ACTIVE PASS
+        // ==========================================
+
+        for (Student existingStudent : existingStudents) {
+
+            boolean hasActivePass =
+                    applicationRepository.existsByStudentIdAndStatus(
+                            existingStudent.getId(),
+                            PassStatus.APPROVED
+                    );
+
+            if (hasActivePass) {
+
+                throw new RuntimeException(
+                        "Student already has an active bus pass"
+                );
+            }
+        }
+
+        // ==========================================
+        // 3. IF STUDENT EXISTS BUT HAS NO ACTIVE PASS
+        //    USE THE EXISTING STUDENT
+        // ==========================================
+
+        if (!existingStudents.isEmpty()) {
+
+            return existingStudents.get(0);
+        }
+
+        // ==========================================
+        // 4. CREATE NEW STUDENT
+        // ==========================================
+
         try {
 
-            // Create upload directory if it doesn't exist
             Files.createDirectories(uploadDirectory);
+
+            // ==========================================
+            // 5. SAVE PHOTO
+            // ==========================================
 
             if (photo != null && !photo.isEmpty()) {
 
-                String originalName = photo.getOriginalFilename();
+                String originalName =
+                        photo.getOriginalFilename();
 
                 String extension = "";
 
@@ -60,6 +113,10 @@ public class StudentService {
                 );
             }
 
+            // ==========================================
+            // 6. SAVE NEW STUDENT
+            // ==========================================
+
             return studentRepository.save(student);
 
         } catch (IOException e) {
@@ -70,9 +127,18 @@ public class StudentService {
         }
     }
 
+    // ==========================================
+    // GET ALL STUDENTS
+    // ==========================================
+
     public List<Student> getAllStudents() {
+
         return studentRepository.findAll();
     }
+
+    // ==========================================
+    // GET STUDENT BY ID
+    // ==========================================
 
     public Student getStudentById(Long id) {
 

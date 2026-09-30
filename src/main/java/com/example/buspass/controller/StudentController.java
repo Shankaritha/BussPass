@@ -27,8 +27,10 @@ public class StudentController {
             @RequestParam("collegeName") String collegeName,
             @RequestParam("photo") MultipartFile photo) {
 
-        if (photo == null || photo.isEmpty()) {
-            throw new RuntimeException("Student photo is required");
+        if (phone == null || !phone.matches("\\d{10}")) {
+            throw new RuntimeException(
+                    "Please enter a valid 10-digit phone number"
+            );
         }
 
         Student student = new Student();

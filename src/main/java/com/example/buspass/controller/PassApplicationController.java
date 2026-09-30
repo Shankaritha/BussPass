@@ -18,6 +18,11 @@ public class PassApplicationController {
 
     private final PassApplicationService applicationService;
 
+
+    // =========================================================
+    // CREATE APPLICATION
+    // =========================================================
+
     @PostMapping
     public ResponseEntity<PassApplication> createApplication(
             @Valid @RequestBody PassApplicationRequest request) {
@@ -34,51 +39,105 @@ public class PassApplicationController {
                 .body(application);
     }
 
+
+    // =========================================================
+    // GET ALL APPLICATIONS
+    // =========================================================
+
     @GetMapping
-    public List<PassApplication> getAllApplications() {
-        return applicationService.getAllApplications();
-    }
+    public ResponseEntity<List<PassApplication>> getAllApplications() {
 
-    @GetMapping("/{id}")
-    public PassApplication getApplication(
-            @PathVariable Long id) {
-
-        return applicationService.getApplicationById(id);
-    }
-
-    @GetMapping("/student/{studentId}")
-    public List<PassApplication> getStudentApplications(
-            @PathVariable Long studentId) {
-
-        return applicationService
-                .getApplicationsByStudent(studentId);
-    }
-
-    @PutMapping("/{id}/approve")
-    public PassApplication approveApplication(
-            @PathVariable Long id) {
-
-        return applicationService.approveApplication(id);
-    }
-
-    @PutMapping("/{id}/reject")
-    public PassApplication rejectApplication(
-            @PathVariable Long id,
-            @RequestParam String reason) {
-
-        return applicationService.rejectApplication(
-                id,
-                reason
+        return ResponseEntity.ok(
+                applicationService.getAllApplications()
         );
     }
 
-    @GetMapping("/expiring")
-    public List<PassApplication> getExpiringApplications() {
-        return applicationService.getExpiringApplications();
+
+    // =========================================================
+    // GET APPLICATION BY ID
+    // =========================================================
+
+    @GetMapping("/{id}")
+    public ResponseEntity<PassApplication> getApplication(
+            @PathVariable Long id) {
+
+        return ResponseEntity.ok(
+                applicationService.getApplicationById(id)
+        );
     }
 
+
+    // =========================================================
+    // GET APPLICATIONS BY STUDENT
+    // =========================================================
+
+    @GetMapping("/student/{studentId}")
+    public ResponseEntity<List<PassApplication>>
+    getStudentApplications(
+            @PathVariable Long studentId) {
+
+        return ResponseEntity.ok(
+                applicationService
+                        .getApplicationsByStudent(studentId)
+        );
+    }
+
+
+    // =========================================================
+    // APPROVE APPLICATION
+    // =========================================================
+
+    @PutMapping("/{id}/approve")
+    public ResponseEntity<PassApplication> approveApplication(
+            @PathVariable Long id) {
+
+        PassApplication application =
+                applicationService.approveApplication(id);
+
+        return ResponseEntity.ok(application);
+    }
+
+
+    // =========================================================
+    // REJECT APPLICATION
+    // =========================================================
+
+    @PutMapping("/{id}/reject")
+    public ResponseEntity<PassApplication> rejectApplication(
+            @PathVariable Long id,
+            @RequestParam String reason) {
+
+        PassApplication application =
+                applicationService.rejectApplication(
+                        id,
+                        reason
+                );
+
+        return ResponseEntity.ok(application);
+    }
+
+
+    // =========================================================
+    // GET EXPIRING APPLICATIONS
+    // =========================================================
+
+    @GetMapping("/expiring")
+    public ResponseEntity<List<PassApplication>>
+    getExpiringApplications() {
+
+        return ResponseEntity.ok(
+                applicationService.getExpiringApplications()
+        );
+    }
+
+
+    // =========================================================
+    // UPDATE EXPIRED APPLICATIONS
+    // =========================================================
+
     @PutMapping("/update-expired")
-    public ResponseEntity<String> updateExpiredApplications() {
+    public ResponseEntity<String>
+    updateExpiredApplications() {
 
         applicationService.updateExpiredApplications();
 
